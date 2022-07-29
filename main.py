@@ -7,6 +7,7 @@ import json
 import datetime
 import struct
 import traceback
+from pprint import pprint
 
 from avlDecoder import avlDecoder
 from apiControl import postRequest
@@ -15,6 +16,8 @@ avl_decoder    = avlDecoder()
 post_requester = postRequest()
 class TCPServer():
     def __init__(self, port):
+        print('Setting up tcp server')
+        
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -22,7 +25,9 @@ class TCPServer():
         self.sock.bind(('', self.port))
 
     def tcpServer(self):
+        print(f"Listening on port {self.port}")
         self.sock.listen()
+        
         while True:
             conn, addr = self.sock.accept()
             thread = threading.Thread(target=self.handle_client, args=(conn, addr))
@@ -43,9 +48,11 @@ class TCPServer():
                         w.writelines(recieved.decode('utf-8')+'\n')
                     vars = avl_decoder.decodeAVL(recieved)
                     vars['imei'] = imei.split("\x0f")[1]
-                    print("vars", vars)
+                    #print("vars", vars)
+                    pprint(vars)
                     resp = self.mResponse(vars['no_record_i'])
-                    time.sleep(30)
+                    time.sleep(10)
+                    print(resp)
                     conn.send(resp)
                     # conn.send(struct.pack("!L", vars['novars']))
                 else:
@@ -84,10 +91,11 @@ class TCPServer():
         return datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     def mResponse(self, data):
+        print(data)
         return data.to_bytes(4, byteorder = 'big')
 
 
 if __name__ == '__main__':
-    port = 5001
+    port = 8989
     data = TCPServer(port)
     data.tcpServer()

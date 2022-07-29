@@ -1,6 +1,7 @@
 import binascii
 import datetime
 import math
+from pprint import pprint
 
 from IO_decoder import IODecoder
 
@@ -32,6 +33,7 @@ class avlDecoder():
     def decodeAVL(self, data):
         self.raw_data      = data
         self.data_field_l  = int(data[8:16],16)*2                                # Data Field Length – size is calculated starting from Codec ID to Number of Data 2.
+        print(f"Data field length: {self.data_field_l}")
         self.total_io_size = self.data_field_l-4-2                               #-4=> subtract codecid and no of data, -2=> no of data at the end.
         self.io_end        = 20+self.total_io_size                               # 20=> start from timestamp
         self.codecid       = int(data[16:18], 16)                                # codecid
@@ -46,40 +48,31 @@ class avlDecoder():
             # record_entries     = data[20:-10]                                    # entry data
             record_entries = data[self.first_io_start: self.io_end ]               # entry data
 
-            entries_size     = len(record_entries)                                 # total no of entries
-            division_size    = int(len(record_entries)/ self.no_record_i)          # division size
-            self.avl_entries = []
+            print(f"Found {self.no_record_i} records")
 
-            print("old size:", entries_size, "division:", division_size)
-            print("new size:", self.total_io_size, "division:", self.total_io_size/ self.no_record_e)
-
-            for i in range(0, entries_size, division_size): 
-                self.avl_entries.append(record_entries[i:i+division_size])         # splitting into chunks
-
-            
-            self.avl_latest   = record_entries[0:self.first_io_end]                # latest avl data packets
-            
-            self.avl_latest_1   = self.avl_entries[0]    
-
-            print("________________________________________")
-            print("old:", self.avl_entries[0])
-            print("new:", self.avl_latest)
-            print("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾")
-
-            self.d_time_unix  = int(self.avl_latest[0:16],16)                      # device time unix
-            self.d_time_local = self.unixtoLocal(self.d_time_unix)                 # device time local
-            self.priority     = int(record_entries[16:18], 16)                     # device data priority
-            self.lon          = int(record_entries[18:26], 16)                     # longitude
-            self.lat          = int(record_entries[26:34], 16)                     # latitude
-            self.alt          = int(record_entries[34:38], 16)                     # altitude
-            self.angle        = int(record_entries[38:42], 16)                     # angle
-            self.satellites   = int(record_entries[42:44], 16)                     # no of satellites
-            self.speed        = int(record_entries[44:48], 16)                     # speed
+            start = 0
+            count = 0
+            while start < len(record_entries)-1 and count < self.no_record_i:
+                print(f"Fetching record no {count +1 }")
+                data = {}
+                
+                data['d_time_unix']  = int(record_entries[start:start+16], 16)
+                data['d_time_local'] = self.unixtoLocal(data['d_time_unix'])
+                data['priority'] = int(record_entries[start+16:start+18], 16)
+                data['lon']          = int(record_entries[start+18:start+26], 16)
+                data['lat']          = int(record_entries[start+26:start+34], 16)
+                data['alt']          = int(record_entries[start+34:start+38], 16)
+                data['angle']        = int(record_entries[start+38:start+42], 16)
+                data['satellites']   = int(record_entries[start+42:start+44], 16)
+                data['speed']        = int(record_entries[start+44:start+48], 16)
         
-            self.avl_io_raw   = self.avl_latest[48:]                               # avl io data raw
-            print("raw io",self.avl_io_raw)                                       
+                data['io'], io_l   = io.dataDecoder(record_entries[start+48:])
 
-            self.decoded_io   = io.dataDecoder(self.avl_io_raw)                    # decoded avl data
+                start = start + io_l+48
+                count = count + 1
+
+                pprint(data)
+                        
             return self.getAvlData()
         else:
             return -1

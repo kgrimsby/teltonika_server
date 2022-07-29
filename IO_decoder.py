@@ -49,6 +49,7 @@ class IODecoder():
             Ns_data    = {}
             eventIO_ID = int(n_data[0:2], 16)
             N_Tot_io   = int(n_data[2:4], 16)
+            print(f"Total io events: {N_Tot_io}")
 
             n_N1       = int(n_data[4:6], 16)                   # number of n1's
             N1s_size   = n_N1 * (2 + 2)                         # n1 size
@@ -56,9 +57,10 @@ class IODecoder():
             N1_data    = self.ioDecoderN1(N1s, N1s_size)
             Ns_data['n1'] = N1_data                             # final N1 converted
 
+            
             if(n_N1 == N_Tot_io):                               # N1 Break check
                 print("breaking @ N1")
-                return Ns_data
+                return Ns_data, N1s_size + 6
 
             N2_start   = 6+N1s_size                             # n2 start location
             n_N2       = int(n_data[N2_start:N2_start+2], 16)   # number of n2's
@@ -70,7 +72,7 @@ class IODecoder():
 
             if(n_N1 + n_N2 == N_Tot_io):                        # N2 Break check
                 print("breaking @ N2")
-                return Ns_data
+                return Ns_data, N2_end + 4
 
             N4_start   = N2_end                                 # n4 start location
             n_N4       = int(n_data[N4_start:N4_start+2], 16)   # number of n4's
@@ -82,7 +84,8 @@ class IODecoder():
 
             if(n_N1 + n_N2 + n_N4 == N_Tot_io):                 # N4 Break check
                 print("breaking @ N4")
-                return Ns_data
+                print(int(n_data[N4_end:N4_end+2]))
+                return Ns_data, N4_end+2
             
             N8_start  = N4_end                                  # n8 start location
             n_N8      = int(n_data[N8_start:N8_start+2], 16)    # number of n8's
@@ -95,8 +98,9 @@ class IODecoder():
 
             if(n_N1 + n_N2 + n_N4 + n_N8 == N_Tot_io):          # N4 Break check
                 print("breaking @ N8")
-                return Ns_data
+                return Ns_data, N8_end
             else:
+                print('Checksum mismatch')
                 return -1                                       # -1 error
         except Exception as e:
             print(traceback.format_exc())
